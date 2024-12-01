@@ -5,6 +5,10 @@ use crate::{
   containers::{commands::set_focused_descendant, traits::CommonGetters},
   user_config::UserConfig,
   wm_state::WmState,
+  windows::{
+    traits::WindowGetters,
+    WindowState,
+  },
 };
 
 pub fn handle_mouse_move(
@@ -18,14 +22,28 @@ pub fn handle_mouse_move(
     return Ok(());
   }
 
+  let focused_container =
+  state.focused_container().context("No focused container.")?;
+
+  match focused_container.as_window_container() {
+    Ok(window) => {
+        if matches!(window.state(), WindowState::Floating(_)) {
+          return Ok(());
+        }
+    },
+    Err(_) => {
+      return Ok(());
+    },
+  }
+
   let window_under_cursor = Platform::window_from_point(&event.point)
     .and_then(|window| Platform::root_ancestor(&window))
     .map(|root| state.window_from_native(&root))?;
 
   // Set focus to whichever window is currently under the cursor.
   if let Some(window) = window_under_cursor {
-    let focused_container =
-      state.focused_container().context("No focused container.")?;
+    // let focused_container =
+    //   state.focused_container().context("No focused container.")?;
 
     if focused_container.id() != window.id() {
       set_focused_descendant(window.as_container(), None);
