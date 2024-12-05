@@ -54,6 +54,9 @@ pub struct WmState {
   /// `ignore` command.
   pub ignored_windows: Vec<NativeWindow>,
 
+  /// Whether the WM is paused.
+  pub is_paused: bool,
+
   /// Whether the initial state has been populated.
   has_initialized: bool,
 
@@ -98,6 +101,7 @@ impl WmState {
       unmanaged_or_minimized_timestamp: None,
       binding_modes: Vec::new(),
       ignored_windows: Vec::new(),
+      is_paused: false,
       has_initialized: false,
       event_tx,
       exit_tx,
@@ -426,11 +430,12 @@ impl WmState {
 
   /// Emits a WM event through an MSPC channel.
   ///
-  /// Does not emit events while the WM is populating initial state. This
-  /// is to prevent events (e.g. workspace activation events) from being
-  /// emitted via IPC server before the initial state is prepared.
+  /// Does not emit events while the WM is paused or populating initial
+  /// state. This is to prevent events (e.g. workspace activation events)
+  /// from being emitted via IPC server before the initial state is
+  /// prepared.
   pub fn emit_event(&self, event: WmEvent) {
-    if self.has_initialized {
+    if self.has_initialized && !self.is_paused {
       if let Err(err) = self.event_tx.send(event) {
         warn!("Failed to send event: {}", err);
       }
@@ -497,9 +502,12 @@ impl WmState {
       .or(Some(workspace.into()))
   }
 
-  pub fn containers_at_point(&self, point: &Point) -> Vec<Container> {
-    self
-      .root_container
+  pub fn containers_at_point(
+    &self,
+    origin_container: Container,
+    point: &Point,
+  ) -> Vec<Container> {
+    origin_container
       .descendants()
       .filter(|descendant| {
         descendant

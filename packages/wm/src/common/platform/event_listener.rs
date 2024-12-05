@@ -2,6 +2,7 @@ use tokio::sync::mpsc::{self, UnboundedReceiver};
 
 use super::{EventWindow, NativeWindow};
 use crate::{
+  app_command::InvokeCommand,
   common::Point,
   user_config::{BindingModeConfig, KeybindingConfig, UserConfig},
 };
@@ -63,15 +64,29 @@ impl EventListener {
     &mut self,
     config: &UserConfig,
     binding_modes: &[BindingModeConfig],
+    paused: bool,
   ) {
-    // Modify keybindings based on active binding modes.
-    let keybindings = match binding_modes.first() {
-      Some(binding_mode) => &binding_mode.keybindings,
-      None => &config.value.keybindings,
+    // Modify keybindings based on active binding modes and paused state.
+    let keybindings = if paused {
+      &config
+        .value
+        .keybindings
+        .iter()
+        .filter(|config| {
+          config.commands.contains(&InvokeCommand::WmTogglePause)
+        })
+        .cloned()
+        .collect::<Vec<_>>()
+    } else {
+      match binding_modes.first() {
+        Some(binding_mode) => &binding_mode.keybindings,
+        None => &config.value.keybindings,
+      }
     };
 
-    self
-      .event_window
-      .update(keybindings, config.value.general.focus_follows_cursor);
+    self.event_window.update(
+      keybindings,
+      config.value.general.focus_follows_cursor && !paused,
+    );
   }
 }

@@ -95,9 +95,7 @@ impl WindowManager {
       }
     }?;
 
-    platform_sync(state, config)?;
-
-    Ok(())
+    platform_sync(state, config)
   }
 
   pub fn process_commands(

@@ -60,4 +60,7 @@ pub enum WmEvent {
   WorkspaceUpdated {
     updated_workspace: ContainerDto,
   },
+  PauseChanged {
+    is_paused: bool,
+  },
 }

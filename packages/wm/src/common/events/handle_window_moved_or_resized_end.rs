@@ -55,6 +55,11 @@ pub fn handle_window_moved_or_resized_end(
         }
       }
       WindowContainer::TilingWindow(window) => {
+        // Don't update state on resize events if the WM is paused.
+        if state.is_paused {
+          return Ok(());
+        }
+
         info!("Tiling window resized");
 
         let parent = window.parent().context("No parent.")?;
@@ -102,7 +107,7 @@ fn drop_as_tiling_window(
   // Get the workspace, split containers, and other windows under the
   // dragged window.
   let containers_at_pos = state
-    .containers_at_point(&mouse_pos)
+    .containers_at_point(workspace.clone().into(), &mouse_pos)
     .into_iter()
     .filter(|container| container.id() != moved_window.id());
 
